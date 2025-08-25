@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DSA Visualizations -- Choose Visualization</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+
+    <!-- Nav Bar -->
+    <nav class="bg-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="index.html" class="text-2xl font-bold text-gray-900 hover:text-indigo-600">DSA Visualizer</a>
+        </div>
+    </nav>
+
+    <!-- Page Content -->
+    <main class="container mx-auto px-4 py-12 flex justify-center">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            
+            <!-- Sorting Algorithms Visualizer Box -->
+            <a href="sorting.html" class="block bg-white rounded-lg shadow-md hover:shadow-lg transition p-6 text-center">
+                <h2 class="text-2xl font-bold mb-4">Sorting Algorithms Visualizer</h2>
+                <p class="text-gray-600 mb-4">
+                    Watch bubble sort, merge sort, quick sort, and more in action.
+                </p>
+                <div class="bg-indigo-500 hover:bg-indigo-600 text-white py-2 px-4 rounded-md inline-block transition">
+                    Launch
+                </div>
+            </a>
+
+            <!-- Searching in Array Box -->
+            <a href="searching.html" class="block bg-white rounded-lg shadow-md hover:shadow-lg transition p-6 text-center">
+                <h2 class="text-2xl font-bold mb-4">Searching in Array</h2>
+                <p class="text-gray-600 mb-4">
+                    Visualize linear search and binary search step-by-step with highlights.
+                </p>
+                <div class="bg-indigo-500 hover:bg-indigo-600 text-white py-2 px-4 rounded-md inline-block transition">
+                    Launch
+                </div>
+            </a>
+
+        </div>
+    </main>
+
+</body>
+</html>

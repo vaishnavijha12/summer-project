@@ -1,0 +1,403 @@
+<!-- Navigation Bar -->
+ <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>Sorting Algorithm Visualizer</title>
+text
+<!-- Tailwind CSS CDN (must load before your content/styles) -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Inter font -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+    body { font-family: 'Inter', sans-serif; }
+    .bar {
+        width: 10px;
+        display: inline-block;
+        margin: 0 2px;
+        transition: height 0.3s ease, background-color 0.3s ease;
+    }
+    .disabled { opacity: 0.5; cursor: not-allowed; }
+</style>
+</head>
+<nav class="bg-white shadow-md sticky top-0 z-50">
+    <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+        <a href="index.html" class="text-2xl font-bold text-gray-900 hover:text-indigo-600">DSA Visualizer</a>
+        <a href="index.html#visualizations" class="bg-indigo-500 text-white py-2 px-4 rounded-full hover:bg-indigo-600 transition duration-300">
+            &larr; Back to Visualizations
+        </a>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<main class="container mx-auto px-4 py-8">
+    <div class="text-center mb-8">
+        <h1 class="text-4xl font-bold">Sorting Algorithm Visualizer</h1>
+        <p class="text-gray-600 mt-2">Watch different sorting algorithms in action!</p>
+    </div>
+
+    <!-- Controls Section -->
+    <div class="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-8 flex flex-col md:flex-row items-center justify-between gap-4 flex-wrap">
+        <div class="flex items-center gap-4">
+            <button id="generate-array" class="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 font-semibold transition duration-300">New Array</button>
+            <button id="pause-btn" class="bg-yellow-500 text-white py-2 px-4 rounded-md hover:bg-yellow-600 font-semibold transition duration-300 hidden">Pause</button>
+            <button id="reset-btn" class="bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600 font-semibold transition duration-300">Reset</button>
+        </div>
+        <div class="flex items-center gap-4 flex-wrap justify-center">
+            <div class="flex flex-col items-center">
+                <label for="array-size" class="text-sm font-medium">Size</label>
+                <input id="array-size" type="range" min="10" max="100" value="50" class="w-32 cursor-pointer">
+            </div>
+            <div class="flex flex-col items-center">
+                <label for="speed" class="text-sm font-medium">Speed</label>
+                <!-- Slower defaults and wider range -->
+                <input id="speed" type="range" min="200" max="2000" value="800" class="w-32 cursor-pointer">
+                <div class="text-xs text-gray-500 mt-1 text-center w-full">200–2000ms per step</div>
+            </div>
+            <button id="slow-mode" class="bg-purple-500 text-white py-2 px-3 rounded-md hover:bg-purple-600 font-semibold transition">Slow Mode</button>
+        </div>
+        <div id="algorithm-buttons" class="flex items-center gap-2 flex-wrap justify-center">
+            <button class="algo-btn bg-gray-200 py-2 px-4 rounded-md hover:bg-indigo-500 hover:text-white transition duration-300" data-algo="bubble">Bubble Sort</button>
+            <button class="algo-btn bg-gray-200 py-2 px-4 rounded-md hover:bg-indigo-500 hover:text-white transition duration-300" data-algo="selection">Selection Sort</button>
+            <button class="algo-btn bg-gray-200 py-2 px-4 rounded-md hover:bg-indigo-500 hover:text-white transition duration-300" data-algo="insertion">Insertion Sort</button>
+            <button class="algo-btn bg-gray-200 py-2 px-4 rounded-md hover:bg-indigo-500 hover:text-white transition duration-300" data-algo="quick">Quick Sort</button>
+            <button class="algo-btn bg-gray-200 py-2 px-4 rounded-md hover:bg-indigo-500 hover:text-white transition duration-300" data-algo="merge">Merge Sort</button>
+        </div>
+    </div>
+
+    <!-- Visualization Container -->
+    <div id="bar-container" class="bg-white rounded-lg shadow-lg p-4 h-96 flex justify-center items-end">
+        <!-- Bars will be generated here by JavaScript -->
+    </div>
+</main>
+
+<script>
+    // DOM Elements
+    const generateArrayBtn = document.getElementById('generate-array');
+    const pauseBtn = document.getElementById('pause-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const arraySizeSlider = document.getElementById('array-size');
+    const speedSlider = document.getElementById('speed');
+    const slowModeBtn = document.getElementById('slow-mode');
+    const barContainer = document.getElementById('bar-container');
+    const algorithmButtons = document.querySelectorAll('.algo-btn');
+    const controlsToDisable = [generateArrayBtn, arraySizeSlider, ...algorithmButtons];
+
+    let array = [];
+    let originalArray = [];
+    let isSorting = false;
+    let isPaused = false;
+
+    // Track progressively sorted indices
+    let sortedIndices = new Set();
+
+    // --- Core Functions ---
+
+    function generateArray() {
+        if (isSorting) return;
+        array = [];
+        sortedIndices.clear();
+        const size = arraySizeSlider.value;
+        barContainer.innerHTML = '';
+        for (let i = 0; i < size; i++) {
+            array.push(Math.floor(Math.random() * 95) + 5);
+        }
+        originalArray = [...array];
+        renderBars(array);
+    }
+
+    function resetArray() {
+        isSorting = false;
+        isPaused = false;
+        pauseBtn.textContent = 'Pause';
+        pauseBtn.classList.add('hidden');
+        array = [...originalArray];
+        sortedIndices.clear();
+        renderBars(array);
+        toggleControls(false);
+    }
+
+    function renderBars(arr, swappers = [], pinnedIndices = []) {
+        // swappers: indices currently compared or swapped (red)
+        // pinnedIndices: indices of interest like pivot, key, minIndex (amber)
+        barContainer.innerHTML = '';
+        const containerHeight = barContainer.clientHeight;
+        const barWidth = Math.max(1, Math.floor(barContainer.clientWidth / (arr.length * 1.5)));
+        const pinnedSet = new Set(pinnedIndices);
+
+        arr.forEach((value, index) => {
+            const bar = document.createElement('div');
+            bar.classList.add('bar');
+            bar.style.width = `${barWidth}px`;
+            bar.style.height = `${(value / 100) * containerHeight}px`;
+
+            if (sortedIndices.has(index)) {
+                bar.style.backgroundColor = '#4ade80';
+            } else if (swappers.includes(index)) {
+                bar.style.backgroundColor = '#f87171';
+            } else if (pinnedSet.has(index)) {
+                bar.style.backgroundColor = '#fbbf24';
+            } else {
+                bar.style.backgroundColor = '#60a5fa';
+            }
+            barContainer.appendChild(bar);
+        });
+    }
+    
+    async function sleep(ms) {
+        while (isPaused) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function toggleControls(state) {
+        isSorting = state;
+        controlsToDisable.forEach(control => {
+            control.disabled = state;
+            control.classList.toggle('disabled', state);
+        });
+    }
+
+    // --- Sorting Algorithms ---
+
+    async function bubbleSort() {
+        sortedIndices.clear();
+        const n = array.length;
+        for (let i = 0; i < n - 1; i++) {
+            let swapped = false;
+            for (let j = 0; j < n - i - 1; j++) {
+                if (!isSorting) return;
+                renderBars(array, [j, j + 1]);
+                await sleep(Number(speedSlider.value));
+
+                if (array[j] > array[j + 1]) {
+                    [array[j], array[j + 1]] = [array[j + 1], array[j]];
+                    swapped = true;
+                    renderBars(array, [j, j + 1]);
+                    await sleep(Number(speedSlider.value));
+                }
+            }
+            sortedIndices.add(n - i - 1);
+            renderBars(array);
+            await sleep(Number(speedSlider.value));
+
+            if (!swapped) {
+                for (let k = 0; k < n - i - 1; k++) sortedIndices.add(k);
+                renderBars(array);
+                await sleep(Number(speedSlider.value));
+                break;
+            }
+        }
+        for (let i = 0; i < n; i++) sortedIndices.add(i);
+    }
+    
+    async function selectionSort() {
+        sortedIndices.clear();
+        const n = array.length;
+        for (let i = 0; i < n - 1; i++) {
+            let minIndex = i;
+            for (let j = i + 1; j < n; j++) {
+                if (!isSorting) return;
+                renderBars(array, [j], [minIndex]);
+                await sleep(Number(speedSlider.value));
+                if (array[j] < array[minIndex]) {
+                    minIndex = j;
+                    renderBars(array, [], [minIndex]);
+                    await sleep(Number(speedSlider.value));
+                }
+            }
+            if (minIndex !== i) {
+                [array[i], array[minIndex]] = [array[minIndex], array[i]];
+                renderBars(array, [i, minIndex]);
+                await sleep(Number(speedSlider.value));
+            }
+            sortedIndices.add(i);
+            renderBars(array);
+            await sleep(Number(speedSlider.value));
+        }
+        sortedIndices.add(n - 1);
+        renderBars(array);
+    }
+
+    async function insertionSort() {
+        sortedIndices.clear();
+        const n = array.length;
+        sortedIndices.add(0);
+        renderBars(array);
+        await sleep(Number(speedSlider.value));
+
+        for (let i = 1; i < n; i++) {
+            let key = array[i];
+            let j = i - 1;
+
+            renderBars(array, [], [i]);
+            await sleep(Number(speedSlider.value));
+
+            while (j >= 0 && array[j] > key) {
+                if (!isSorting) return;
+                array[j + 1] = array[j];
+                renderBars(array, [j, j + 1], [i]);
+                await sleep(Number(speedSlider.value));
+                j = j - 1;
+            }
+            array[j + 1] = key;
+            renderBars(array, [j + 1], [i]);
+            await sleep(Number(speedSlider.value));
+
+            for (let k = 0; k <= i; k++) sortedIndices.add(k);
+            renderBars(array);
+            await sleep(Number(speedSlider.value));
+        }
+    }
+
+    async function quickSort() {
+        sortedIndices.clear();
+        await quickSortHelper(0, array.length - 1);
+        for (let i = 0; i < array.length; i++) sortedIndices.add(i);
+        renderBars(array);
+    }
+
+    async function quickSortHelper(low, high) {
+        if (low < high) {
+            if (!isSorting) return;
+            let pi = await partition(low, high);
+            sortedIndices.add(pi);
+            renderBars(array);
+            await sleep(Number(speedSlider.value));
+
+            await quickSortHelper(low, pi - 1);
+            await quickSortHelper(pi + 1, high);
+        } else if (low === high) {
+            sortedIndices.add(low);
+            renderBars(array);
+            await sleep(Number(speedSlider.value));
+        }
+    }
+
+    async function partition(low, high) {
+        const pivotIndex = high;
+        const pivot = array[pivotIndex];
+        let i = (low - 1);
+        for (let j = low; j <= high - 1; j++) {
+            if (!isSorting) return pivotIndex;
+            renderBars(array, [j], [pivotIndex]);
+            await sleep(Number(speedSlider.value));
+
+            if (array[j] < pivot) {
+                i++;
+                [array[i], array[j]] = [array[j], array[i]];
+                renderBars(array, [i, j], [pivotIndex]);
+                await sleep(Number(speedSlider.value));
+            }
+        }
+        [array[i + 1], array[pivotIndex]] = [array[pivotIndex], array[i + 1]];
+        renderBars(array, [i + 1, pivotIndex]);
+        await sleep(Number(speedSlider.value));
+        return (i + 1);
+    }
+
+    async function mergeSort() {
+        sortedIndices.clear();
+        const animations = getMergeSortAnimations(array.slice());
+        for (let step of animations) {
+            if (!isSorting) return;
+            if (step.type === 'compare') {
+                renderBars(array, [step.i, step.j]);
+            } else if (step.type === 'write') {
+                array[step.index] = step.value;
+                renderBars(array, [step.index]);
+            }
+            await sleep(Number(speedSlider.value));
+        }
+        for (let i = 0; i < array.length; i++) sortedIndices.add(i);
+        renderBars(array);
+    }
+
+    function getMergeSortAnimations(arr) {
+        const animations = [];
+        if (arr.length <= 1) return animations;
+        const aux = arr.slice();
+        mergeSortHelperMS(arr, 0, arr.length - 1, aux, animations);
+        return animations;
+    }
+
+    function mergeSortHelperMS(mainArray, startIdx, endIdx, auxiliaryArray, animations) {
+        if (startIdx === endIdx) return;
+        const middleIdx = Math.floor((startIdx + endIdx) / 2);
+        mergeSortHelperMS(auxiliaryArray, startIdx, middleIdx, mainArray, animations);
+        mergeSortHelperMS(auxiliaryArray, middleIdx + 1, endIdx, mainArray, animations);
+        doMergeMS(mainArray, startIdx, middleIdx, endIdx, auxiliaryArray, animations);
+    }
+
+    function doMergeMS(mainArray, startIdx, middleIdx, endIdx, auxiliaryArray, animations) {
+        let k = startIdx;
+        let i = startIdx;
+        let j = middleIdx + 1;
+
+        while (i <= middleIdx && j <= endIdx) {
+            animations.push({ type: 'compare', i, j });
+            if (auxiliaryArray[i] <= auxiliaryArray[j]) {
+                animations.push({ type: 'write', index: k, value: auxiliaryArray[i] });
+                mainArray[k++] = auxiliaryArray[i++];
+            } else {
+                animations.push({ type: 'write', index: k, value: auxiliaryArray[j] });
+                mainArray[k++] = auxiliaryArray[j++];
+            }
+        }
+        while (i <= middleIdx) {
+            animations.push({ type: 'compare', i, j: i });
+            animations.push({ type: 'write', index: k, value: auxiliaryArray[i] });
+            mainArray[k++] = auxiliaryArray[i++];
+        }
+        while (j <= endIdx) {
+            animations.push({ type: 'compare', i: j, j });
+            animations.push({ type: 'write', index: k, value: auxiliaryArray[j] });
+            mainArray[k++] = auxiliaryArray[j++];
+        }
+    }
+
+    // --- Event Listeners ---
+
+    window.onload = generateArray;
+    generateArrayBtn.addEventListener('click', generateArray);
+    resetBtn.addEventListener('click', resetArray);
+    arraySizeSlider.addEventListener('input', generateArray);
+    
+    pauseBtn.addEventListener('click', () => {
+        isPaused = !isPaused;
+        pauseBtn.textContent = isPaused ? 'Resume' : 'Pause';
+    });
+
+    slowModeBtn.addEventListener('click', () => {
+        // One-click slower playback: 1200ms per step
+        speedSlider.value = 1200;
+    });
+
+    algorithmButtons.forEach(button => {
+        button.addEventListener('click', async () => {
+            if (isSorting) return;
+            toggleControls(true);
+            pauseBtn.classList.remove('hidden');
+
+            sortedIndices.clear();
+
+            const algorithm = button.dataset.algo;
+            
+            if (algorithm === 'bubble') await bubbleSort();
+            else if (algorithm === 'selection') await selectionSort();
+            else if (algorithm === 'insertion') await insertionSort();
+            else if (algorithm === 'quick') await quickSort();
+            else if (algorithm === 'merge') await mergeSort();
+            
+            if (isSorting) {
+                sortedIndices.clear();
+                for (let i = 0; i < array.length; i++) sortedIndices.add(i);
+                renderBars(array);
+            }
+            
+            toggleControls(false);
+            isPaused = false;
+            pauseBtn.textContent = 'Pause';
+            pauseBtn.classList.add('hidden');
+        });
+    });
+</script>

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Searching in Array -- Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .bar {
+            width: 24px;
+            display: inline-flex;
+            align-items: flex-end;
+            justify-content: center;
+            margin: 0 4px;
+            transition: height 0.25s ease, background-color 0.25s ease, transform 0.1s ease;
+            border-radius: 4px 4px 0 0;
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            padding-bottom: 4px;
+        }
+        .disabled { opacity: 0.5; cursor: not-allowed; }
+        .legend-dot { width: 12px; height: 12px; border-radius: 9999px; display: inline-block; margin-right: 6px; }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+
+    <!-- Navigation -->
+    <nav class="bg-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="index.html" class="text-2xl font-bold text-gray-900 hover:text-indigo-600">DSA Visualizer</a>
+            <a href="visualizations.html" class="bg-indigo-500 text-white py-2 px-4 rounded-full hover:bg-indigo-600 transition duration-300">
+                ← Back to Visualizations
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main -->
+    <main class="container mx-auto px-4 py-8">
+        <div class="text-center mb-6">
+            <h1 class="text-4xl font-bold">Searching in Array</h1>
+            <p class="text-gray-600 mt-2">Visualize Linear Search and Binary Search step-by-step.</p>
+        </div>
+
+        <!-- Controls -->
+        <div class="bg-white rounded-lg shadow-lg p-4 md:p-6 mb-6 flex flex-col gap-4">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <button id="generate-array" class="bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 font-semibold transition">New Array</button>
+                    <button id="sort-array" class="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 font-semibold transition">Sort Array (for Binary)</button>
+                    <button id="pause-btn" class="bg-yellow-500 text-white py-2 px-4 rounded-md hover:bg-yellow-600 font-semibold transition hidden">Pause</button>
+                    <button id="reset-btn" class="bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600 font-semibold transition">Reset</button>
+                </div>
+
+                <div class="flex items-center gap-6 flex-wrap justify-center">
+                    <div class="flex flex-col items-center">
+                        <label for="array-size" class="text-sm font-medium">Size</label>
+                        <input id="array-size" type="range" min="5" max="30" value="12" class="w-32 cursor-pointer">
+                    </div>
+                    <div class="flex flex-col items-center">
+                        <label for="speed" class="text-sm font-medium">Speed</label>
+                        <!-- Slower defaults and wider range -->
+                        <input id="speed" type="range" min="200" max="2000" value="800" class="w-32 cursor-pointer">
+                        <div class="text-xs text-gray-500 mt-1">200–2000ms per step</div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3 flex-wrap justify-center">
+                    <select id="algo-select" class="border rounded-md px-3 py-2">
+                        <option value="linear">Linear Search</option>
+                        <option value="binary">Binary Search</option>
+                    </select>
+                    <input id="target-input" type="number" placeholder="Target" class="border rounded-md px-3 py-2 w-32">
+                    <button id="start-btn" class="bg-indigo-500 text-white py-2 px-4 rounded-md hover:bg-indigo-600 font-semibold transition">Start</button>
+                    <!-- One-click slower playback -->
+                    <button id="slow-mode" class="bg-purple-500 text-white py-2 px-3 rounded-md hover:bg-purple-600 font-semibold transition">Slow Mode</button>
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="flex items-center gap-6 text-sm text-gray-700 justify-center md:justify-start">
+                <div><span class="legend-dot" style="background:#60a5fa;"></span>Default</div>
+                <div><span class="legend-dot" style="background:#f87171;"></span>Comparing</div>
+                <div><span class="legend-dot" style="background:#fbbf24;"></span>Mid/Context</div>
+                <div><span class="legend-dot" style="background:#4ade80;"></span>Found</div>
+            </div>
+        </div>
+
+        <!-- Array Container -->
+        <div id="bar-container" class="bg-white rounded-lg shadow-lg p-4 min-h-56 flex justify-center items-end flex-wrap gap-2">
+            <!-- Bars rendered by JS -->
+        </div>
+
+        <!-- Status -->
+        <div id="status" class="mt-4 text-center text-lg font-semibold text-gray-700"></div>
+    </main>
+
+    <script>
+        // Elements
+        const generateArrayBtn = document.getElementById('generate-array');
+        const sortArrayBtn = document.getElementById('sort-array');
+        const pauseBtn = document.getElementById('pause-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        const arraySizeSlider = document.getElementById('array-size');
+        const speedSlider = document.getElementById('speed');
+        const startBtn = document.getElementById('start-btn');
+        const slowModeBtn = document.getElementById('slow-mode');
+        const algoSelect = document.getElementById('algo-select');
+        const targetInput = document.getElementById('target-input');
+        const barContainer = document.getElementById('bar-container');
+        const statusEl = document.getElementById('status');
+
+        // State
+        let array = [];
+        let originalArray = [];
+        let isRunning = false;
+        let isPaused = false;
+
+        // Helpers
+        function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+        function generateArray() {
+            if (isRunning) return;
+            const size = parseInt(arraySizeSlider.value, 10);
+            array = Array.from({ length: size }, () => randInt(5, 99));
+            originalArray = [...array];
+            setStatus('New array generated.');
+            renderBars();
+        }
+
+        function reset() {
+            isRunning = false;
+            isPaused = false;
+            pauseBtn.textContent = 'Pause';
+            pauseBtn.classList.add('hidden');
+            array = [...originalArray];
+            setStatus('Reset to original array.');
+            renderBars();
+            toggleControls(false);
+        }
+
+        function setStatus(msg) { statusEl.textContent = msg; }
+
+        function renderBars(swappers = [], pinned = [], foundIndex = null) {
+            barContainer.innerHTML = '';
+            const maxVal = Math.max(...array, 100);
+            array.forEach((val, idx) => {
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                const h = Math.max(24, Math.round((val / maxVal) * 180));
+                bar.style.height = `${h}px`;
+                bar.style.backgroundColor = '#60a5fa'; // default
+                bar.title = `Index ${idx} • ${val}`;
+                bar.textContent = val;
+
+                if (pinned.includes(idx)) {
+                    bar.style.backgroundColor = '#fbbf24'; // amber context (e.g., mid)
+                }
+                if (swappers.includes(idx)) {
+                    bar.style.backgroundColor = '#f87171'; // red comparing
+                }
+                if (foundIndex === idx) {
+                    bar.style.backgroundColor = '#4ade80'; // green found
+                    bar.style.transform = 'scale(1.05)';
+                }
+
+                barContainer.appendChild(bar);
+            });
+        }
+
+        async function sleep(ms) {
+            while (isPaused) {
+                await new Promise(r => setTimeout(r, 100));
+            }
+            return new Promise(r => setTimeout(r, ms));
+        }
+
+        function toggleControls(state) {
+            isRunning = state;
+            const toDisable = [
+                generateArrayBtn, sortArrayBtn, arraySizeSlider, algoSelect, targetInput, startBtn, slowModeBtn
+            ];
+            toDisable.forEach(el => {
+                el.disabled = state;
+                el.classList.toggle('disabled', state);
+            });
+            if (state) {
+                pauseBtn.classList.remove('hidden');
+            }
+        }
+
+        // Algorithms
+        async function linearSearch(target) {
+            setStatus('Linear Search started...');
+            for (let i = 0; i < array.length; i++) {
+                if (!isRunning) return;
+                renderBars([i]);
+                await sleep(Number(speedSlider.value));
+                if (array[i] === target) {
+                    renderBars([], [], i);
+                    setStatus(`Found ${target} at index ${i}.`);
+                    return i;
+                }
+            }
+            setStatus(`${target} not found.`);
+            renderBars(); // reset colors
+            return -1;
+        }
+
+        async function binarySearch(target) {
+            setStatus('Binary Search started...');
+            // Ensure sorted for binary search
+            if (!isSorted(array)) {
+                setStatus('Array not sorted. Sorting now for Binary Search...');
+                array.sort((a, b) => a - b);
+                renderBars();
+                await sleep(500); // slightly slower to observe sorting transition
+            }
+            let left = 0, right = array.length - 1;
+            while (left <= right) {
+                if (!isRunning) return;
+                const mid = Math.floor((left + right) / 2);
+                // Visualize current window and mid
+                const windowIdx = [];
+                for (let k = left; k <= right; k++) windowIdx.push(k);
+                renderBars(windowIdx, [mid]);
+                await sleep(Number(speedSlider.value));
+
+                if (array[mid] === target) {
+                    renderBars([], [], mid);
+                    setStatus(`Found ${target} at index ${mid}.`);
+                    return mid;
+                } else if (array[mid] < target) {
+                    left = mid + 1;
+                } else {
+                    right = mid - 1;
+                }
+            }
+            setStatus(`${target} not found.`);
+            renderBars(); // reset colors
+            return -1;
+        }
+
+        function isSorted(arr) {
+            for (let i = 1; i < arr.length; i++) if (arr[i] < arr[i - 1]) return false;
+            return true;
+        }
+
+        // Events
+        window.onload = generateArray;
+        generateArrayBtn.addEventListener('click', generateArray);
+        resetBtn.addEventListener('click', reset);
+        arraySizeSlider.addEventListener('input', generateArray);
+
+        sortArrayBtn.addEventListener('click', async () => {
+            if (isRunning) return;
+            array.sort((a, b) => a - b);
+            setStatus('Array sorted ascending for Binary Search.');
+            renderBars();
+        });
+
+        pauseBtn.addEventListener('click', () => {
+            isPaused = !isPaused;
+            pauseBtn.textContent = isPaused ? 'Resume' : 'Pause';
+        });
+
+        slowModeBtn.addEventListener('click', () => {
+            // One-click slower playback: 1200ms per step
+            speedSlider.value = 1200;
+        });
+
+        startBtn.addEventListener('click', async () => {
+            if (isRunning) return;
+            const algo = algoSelect.value;
+            const target = Number(targetInput.value);
+            if (Number.isNaN(targetInput.valueAsNumber)) {
+                setStatus('Enter a valid target number.');
+                return;
+            }
+            toggleControls(true);
+            isPaused = false;
+            pauseBtn.textContent = 'Pause';
+
+            if (algo === 'linear') {
+                await linearSearch(target);
+            } else {
+                await binarySearch(target);
+            }
+
+            toggleControls(false);
+            pauseBtn.classList.add('hidden');
+        });
+    </script>
+</body>
+</html>
